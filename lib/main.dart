@@ -24,17 +24,19 @@ class FormularioCadastro extends StatefulWidget {
 }
 
 class _FormularioCadastroState extends State<FormularioCadastro> {
-  final _formKey = GlobalKey<FormState>();
+  final PageController _pageController = PageController();
   final _nomeController = TextEditingController();
   final _dataController = TextEditingController();
 
   String? _sexoSelecionado;
   DateTime? _dataNascimento;
+  int _currentPage = 0;
 
   @override
   void dispose() {
     _nomeController.dispose();
     _dataController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -79,20 +81,61 @@ class _FormularioCadastroState extends State<FormularioCadastro> {
     }
   }
 
+  // Função para validar se todos os campos estão preenchidos
+  bool _todosOsCamposPreenchidos() {
+    return _nomeController.text.isNotEmpty &&
+        _dataNascimento != null &&
+        _sexoSelecionado != null;
+  }
+
+  // Função para validar o nome
+  String? _validarNome(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Por favor, insira seu nome completo';
+    }
+    if (value.trim().split(' ').length < 2) {
+      return 'Por favor, insira nome e sobrenome';
+    }
+    return null;
+  }
+
   // Função para validar o formulário
   void _validarFormulario() {
-    if (_formKey.currentState!.validate()) {
-      if (_dataNascimento != null) {
-        int idade = calcularIdade(_dataNascimento!);
-
-        if (idade >= 18) {
-          // Cadastro válido
-          _mostrarSucesso();
-        } else {
-          _mostrarErroIdade();
-        }
+    if (_todosOsCamposPreenchidos()) {
+      String? erroNome = _validarNome(_nomeController.text);
+      if (erroNome != null) {
+        _mostrarErro(erroNome);
+        return;
       }
+
+      int idade = calcularIdade(_dataNascimento!);
+
+      if (idade >= 18) {
+        _mostrarSucesso();
+      } else {
+        _mostrarErroIdade();
+      }
+    } else {
+      _mostrarErro('Por favor, preencha todos os campos');
     }
+  }
+
+  void _mostrarErro(String mensagem) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Erro de Validação'),
+          content: Text(mensagem),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _mostrarSucesso() {
@@ -152,7 +195,246 @@ class _FormularioCadastroState extends State<FormularioCadastro> {
       _dataController.clear();
       _sexoSelecionado = null;
       _dataNascimento = null;
+      _currentPage = 0;
     });
+    _pageController.animateToPage(
+      0,
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  Widget _buildNomeCard() {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 8),
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          padding: EdgeInsets.all(24),
+          width: MediaQuery.of(context).size.width * 0.85,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.person,
+                size: 48,
+                color: Colors.blue,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Nome Completo',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
+              ),
+              SizedBox(height: 24),
+              TextFormField(
+                controller: _nomeController,
+                decoration: InputDecoration(
+                  labelText: 'Digite seu nome completo',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: Icon(Icons.person_outline),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                ),
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16),
+              ),
+              SizedBox(height: 16),
+              if (_nomeController.text.isNotEmpty)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green[50],
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.green),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green, size: 16),
+                      SizedBox(width: 4),
+                      Text(
+                        'Preenchido',
+                        style: TextStyle(color: Colors.green, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataCard() {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 8),
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          padding: EdgeInsets.all(24),
+          width: MediaQuery.of(context).size.width * 0.85,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.calendar_today,
+                size: 48,
+                color: Colors.blue,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Data de Nascimento',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
+              ),
+              SizedBox(height: 24),
+              TextFormField(
+                controller: _dataController,
+                decoration: InputDecoration(
+                  labelText: 'Selecione sua data de nascimento',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: Icon(Icons.calendar_month),
+                  suffixIcon: IconButton(
+                    icon: Icon(Icons.date_range),
+                    onPressed: () => _selecionarData(context),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                ),
+                readOnly: true,
+                onTap: () => _selecionarData(context),
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16),
+              ),
+              SizedBox(height: 16),
+              if (_dataNascimento != null)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green[50],
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.green),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green, size: 16),
+                      SizedBox(width: 4),
+                      Text(
+                        'Idade: ${calcularIdade(_dataNascimento!)} anos',
+                        style: TextStyle(color: Colors.green, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSexoCard() {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 8),
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          padding: EdgeInsets.all(24),
+          width: MediaQuery.of(context).size.width * 0.85,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.people,
+                size: 48,
+                color: Colors.blue,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Sexo',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
+              ),
+              SizedBox(height: 24),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.grey[50],
+                ),
+                child: Column(
+                  children: [
+                    RadioListTile<String>(
+                      title: Text('Homem', style: TextStyle(fontSize: 16)),
+                      value: 'Homem',
+                      groupValue: _sexoSelecionado,
+                      onChanged: (String? value) {
+                        setState(() {
+                          _sexoSelecionado = value;
+                        });
+                      },
+                      activeColor: Colors.blue,
+                    ),
+                    Divider(height: 1, color: Colors.grey[300]),
+                    RadioListTile<String>(
+                      title: Text('Mulher', style: TextStyle(fontSize: 16)),
+                      value: 'Mulher',
+                      groupValue: _sexoSelecionado,
+                      onChanged: (String? value) {
+                        setState(() {
+                          _sexoSelecionado = value;
+                        });
+                      },
+                      activeColor: Colors.blue,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+              if (_sexoSelecionado != null)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green[50],
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.green),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green, size: 16),
+                      SizedBox(width: 4),
+                      Text(
+                        _sexoSelecionado!,
+                        style: TextStyle(color: Colors.green, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -161,143 +443,115 @@ class _FormularioCadastroState extends State<FormularioCadastro> {
       appBar: AppBar(
         title: Text('Formulário de Cadastro'),
         backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Campo Nome Completo
-              TextFormField(
-                controller: _nomeController,
-                decoration: InputDecoration(
-                  labelText: 'Nome Completo',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor, insira seu nome completo';
-                  }
-                  if (value.trim().split(' ').length < 2) {
-                    return 'Por favor, insira nome e sobrenome';
-                  }
-                  return null;
-                },
-              ),
-
-              SizedBox(height: 16),
-
-              // Campo Data de Nascimento
-              TextFormField(
-                controller: _dataController,
-                decoration: InputDecoration(
-                  labelText: 'Data de Nascimento',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.calendar_today),
-                  suffixIcon: IconButton(
-                    icon: Icon(Icons.date_range),
-                    onPressed: () => _selecionarData(context),
+      body: Column(
+        children: [
+          // Indicador de progresso
+          Container(
+            padding: EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(3, (index) {
+                return Container(
+                  margin: EdgeInsets.symmetric(horizontal: 4),
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _currentPage == index ? Colors.blue : Colors.grey[300],
                   ),
-                ),
-                readOnly: true,
-                onTap: () => _selecionarData(context),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor, selecione sua data de nascimento';
-                  }
-                  return null;
-                },
-              ),
-
-              SizedBox(height: 16),
-
-              // Campo Sexo
-              Text(
-                'Sexo',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              ),
-              SizedBox(height: 8),
-
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Column(
-                  children: [
-                    RadioListTile<String>(
-                      title: Text('Homem'),
-                      value: 'Homem',
-                      groupValue: _sexoSelecionado,
-                      onChanged: (String? value) {
-                        setState(() {
-                          _sexoSelecionado = value;
-                        });
-                      },
-                    ),
-                    RadioListTile<String>(
-                      title: Text('Mulher'),
-                      value: 'Mulher',
-                      groupValue: _sexoSelecionado,
-                      onChanged: (String? value) {
-                        setState(() {
-                          _sexoSelecionado = value;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-
-              if (_sexoSelecionado == null)
-                Padding(
-                  padding: const EdgeInsets.only(left: 12, top: 8),
-                  child: Text(
-                    'Por favor, selecione uma opção',
-                    style: TextStyle(color: Colors.red, fontSize: 12),
-                  ),
-                ),
-
-              SizedBox(height: 32),
-
-              // Botões
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (_sexoSelecionado == null) {
-                          setState(() {}); // Para mostrar a mensagem de erro
-                          return;
-                        }
-                        _validarFormulario();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: Text('Cadastrar', style: TextStyle(fontSize: 16)),
-                    ),
-                  ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _limparFormulario,
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: Text('Limpar', style: TextStyle(fontSize: 16)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                );
+              }),
+            ),
           ),
-        ),
+
+          // Carrossel de cards
+          Expanded(
+            child: PageView(
+              controller: _pageController,
+              onPageChanged: (int page) {
+                setState(() {
+                  _currentPage = page;
+                });
+              },
+              children: [
+                _buildNomeCard(),
+                _buildDataCard(),
+                _buildSexoCard(),
+              ],
+            ),
+          ),
+
+          // Botões de navegação e ação
+          Container(
+            padding: EdgeInsets.all(16),
+            child: Row(
+              children: [
+                if (_currentPage > 0)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        _pageController.previousPage(
+                          duration: Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      },
+                      icon: Icon(Icons.arrow_back),
+                      label: Text('Anterior'),
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                
+                if (_currentPage > 0) SizedBox(width: 16),
+                
+                Expanded(
+                  child: _currentPage < 2
+                      ? ElevatedButton.icon(
+                          onPressed: () {
+                            _pageController.nextPage(
+                              duration: Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            );
+                          },
+                          icon: Icon(Icons.arrow_forward),
+                          label: Text('Próximo'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        )
+                      : ElevatedButton.icon(
+                          onPressed: _validarFormulario,
+                          icon: Icon(Icons.check),
+                          label: Text('Cadastrar'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                ),
+                
+                SizedBox(width: 16),
+                
+                OutlinedButton.icon(
+                  onPressed: _limparFormulario,
+                  icon: Icon(Icons.clear),
+                  label: Text('Limpar'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
